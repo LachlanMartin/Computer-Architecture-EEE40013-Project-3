@@ -33,6 +33,9 @@ signal aluOperand1          : unsigned(31 downto 0);
 signal aluOperand2          : unsigned(31 downto 0);
 signal aluDataOut           : unsigned(31 downto 0);
 signal Z,N,V,C              : std_logic;
+signal doFlags              : std_logic;
+signal aluStart             : std_logic;
+signal aluComplete          : std_logic;
 
 -- Instruction register
 signal ir                  : std_logic_vector(31 downto 0);
@@ -80,6 +83,11 @@ signal writeEn             : std_logic;
 -- Instruction opcode from IR
 signal irOp : IrOp;
 
+-- ADDED SIGNALS
+signal ioPortWrite			: std_logic;
+signal ioPortAddr				: std_logic_vector(2 downto 0);
+signal ioPortDataIn        : std_logic_vector(15 downto 0);
+signal ioPortDataOut       : std_logic_vector(15 downto 0);
 --************************************************************************
 begin
    
@@ -88,6 +96,10 @@ begin
    
    pcOut <= pc(pcOut'range); -- to stop design being optimized away!
 
+   -- For later expansion
+   pinOut <= (others => '0');
+   pinDrv <= (others => '0');
+   
    --==============================================
    -- PC source data path
    --
@@ -140,7 +152,7 @@ begin
    -- Register File control
    --
    regControl:
-   process (ir, RegASource, aluDataOut, dataInBus)
+   process (ir, RegASource, aluDataOut, dataInBus, pc, irOp)
    begin
       regAAddr   <= ir_regA(ir);
       regBAddr   <= ir_regB(ir);
@@ -149,6 +161,8 @@ begin
       case RegASource is
          when aluOut      => regADataIn <= std_logic_vector(aluDataOut);
          when dataMemOut  => regADataIn <= dataInBus;
+         when reg31       => regAAddr   <= "11111";
+                             regADataIn <= pc;
       end case;
 
    end process regControl;
@@ -189,7 +203,7 @@ begin
 
    begin
 
-      if (irOp = IrOp_RegReg) then
+      if (irOp = IrOp_RegReg) or (irOp = IrOp_RegImmed) then
          aluOp  <= ir_aluOp(ir);
       else
          aluOp  <= ALUop_Add; -- add for all other opcodes
@@ -205,8 +219,11 @@ begin
       if (irOp = IrOp_RegReg) then
          aluOperand2  <= unsigned(regCDataOut);
       elsif (irOp = IrOp_RegImmed) then
-         -- 32-bit zero-extended immediate value from ir
-         aluOperand2  <= unsignedImmediateValue;
+         if (ir_aluOp(ir) = AluOp_Eor) then
+            aluOperand2 <= signedImmediateValue;
+         else  
+            aluOperand2 <= unsignedImmediateValue;
+         end if;
       else  
          -- 32-bit sign-extended immediate value from ir
          aluOperand2  <= signedImmediateValue;
@@ -227,7 +244,12 @@ begin
          Z         => Z,
          N         => N,
          V         => V,
-         C         => C
+         C         => C,
+         clock     => clock,
+         reset     => reset,
+         doFlags   => doFlags,
+         aluComplete => aluComplete,
+         aluStart    => aluStart
          );
 
    --================================================
@@ -243,7 +265,9 @@ begin
    dataMemDataIn  <= dataOutBus;
    
    -- DataIn bus connections
-   dataInBus      <= dataMemDataOut;
+	-- ADDED MUX
+   dataInBus      <= dataMemDataOut when addressBus(15) = '0' else
+							ioPortDataOut  when addressBus(15) = '1';
    -- Memory Selection
    dataMemWrite   <= writeEn;
 
@@ -279,7 +303,10 @@ begin
          loadPC       => loadPC,
          loadIR       => loadIR,
          writeEn      => writeEn,
-         PCSource     => PCSource
+         PCSource     => PCSource,
+         doFlags      => doFlags,
+         aluStart     => aluStart,
+         aluComplete  => aluComplete
          );
 
 end architecture Behavioral;

@@ -22,10 +22,15 @@ entity Control is
            regAWrite    : out std_logic;
            RegASource   : out RegASourceT; 
 
+           doFlags      : out std_logic;
+
            loadPC       : out std_logic;
            loadIR       : out std_logic;
            writeEn      : out std_logic;
-           PCSource     : out PCSourceT
+           PCSource     : out PCSourceT;
+
+           aluStart     : out std_logic;
+           aluComplete  : in std_logic
            );
 end entity Control;
 
@@ -65,7 +70,7 @@ begin
    -- Control signals
    --
    combinational:
-   process ( cpuState, ir, Z,N,V,C )
+   process ( cpuState, ir, Z,N,V,C, aluComplete )
 
    --************************************************************************
    -- Determines if a conditional branch is taken
@@ -107,6 +112,7 @@ begin
 
    -- Needed for use in case statements
    variable irOp : IrOp;
+   variable irAluOp : AluOp;
 
    begin
       -- Default control signal values inactive
@@ -124,6 +130,10 @@ begin
       nextCpuState  <= fetch;
 
       irOp := ir_op(ir); -- extract opcode field
+      irAluOp := ir_aluOp(ir);
+      doFlags <= '0';
+
+      aluStart <= '0';
    
       case cpuState is
 
@@ -136,8 +146,10 @@ begin
             case irOp is
                when IrOp_regReg =>                       -- Ra <- Rb op Rc
                   nextCpuState <= execute;
+                  aluStart <= '1';
                when IrOp_RegImmed =>                     -- Ra <- Rb op sex(immed)
                   nextCpuState <= execute;
+                  aluStart <= '1';
                when IrOp_LoadJump =>                     -- Ra <- mem(Rb + sex(immed))
                                                          -- PC <- Rb op sex(immed)
                   nextCpuState <= execute;
@@ -151,6 +163,8 @@ begin
                   elsif (ir_braOp(ir) = BraOp_BSR) then  -- PC <- PC + offset; Reg31 <- PC;
                      loadPC       <= '1';
                      PCSource     <= branchPC;
+                     RegASource   <= reg31;
+                     regAWrite    <= '1';
                   else                                   -- if (cond) PC <- PC + offset
                      if (doBranch( Z, N, V, C, ir)) then
                         loadPC    <= '1';
@@ -166,8 +180,15 @@ begin
          when execute =>
             case irOp is
                when IrOp_regReg | IrOp_RegImmed =>  -- Ra <- Rb op Rc, Ra <- Rb op sex(immed)
-                  regAWrite    <= '1';            
-                  nextCpuState <= fetch;
+                  if aluComplete = '1' then
+                     regAWrite    <= '1';            
+                     nextCpuState <= fetch;
+                     if (irAluOp /= AluOp_Ror) and (irAluOp /= AluOp_Swap) then
+                        doFlags <= '1';
+                     end if;
+                  else
+                     nextCpuState <= execute;
+                  end if;
                when IrOp_LoadJump =>              
                   if (ir_regA(ir) /= "00000") then  -- Ra <- mem(Rb + sex(immed))
                      nextCpuState <= dataRead;
