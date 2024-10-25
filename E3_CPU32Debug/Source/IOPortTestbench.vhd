@@ -108,10 +108,13 @@ BEGIN
                            newData    : in std_logic_vector(15 downto 0)
                          ) is
       begin
-
          -- Set up write
+         dWrite("Performing write ", newAddress, newData);
+         addr <= newAddress;
+         dataIn <= newData;
+         writeEn <= '1';
          wait until rising_edge(clock); -- replace with your code
-
+         writeEn <= '0';
          wait for 10 ns; -- space writes apart for visibility
       end;
 
@@ -126,11 +129,12 @@ BEGIN
                         ) is
       begin
          -- Set up read - this is a combinational path
+         addr <= newAddress;
          wait until rising_edge(clock); -- replace with your code
-
          -- Capture read data on clock edge
          -- your code
-
+         newData := dataOut;
+         dWrite("Performing read ", newAddress, dataOut);
          wait for 10 ns; -- space reads apart for visibility
       end;
 
@@ -193,7 +197,21 @@ BEGIN
       checkValue("IOValue", portIO, x"0000");
 
       -- Your code for other tests
-      
+      -- test set
+      busWrite( PDORAddress, x"AAAA" );
+      busWrite( PSORAddress, x"FF00" );
+      busRead(PDORAddress, tempData);
+      checkValue("PDOR Value", tempData, x"FFAA");
+      -- test clear
+      busWrite( PDORAddress, x"AAAA" );
+      busWrite( PCORAddress, x"FF00" );
+      busRead(PDORAddress, tempData);
+      checkValue("PDOR Value", tempData, x"00AA");
+      -- test toggle
+      busWrite( PDORAddress, x"AAAA" );
+      busWrite( PTORAddress, x"FF00" );
+      busRead(PDORAddress, tempData);
+      checkValue("PDOR Value", tempData, x"55AA");
       
       wait for 4*clockPeriod;
 
