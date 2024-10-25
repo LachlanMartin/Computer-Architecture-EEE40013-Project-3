@@ -259,19 +259,34 @@ begin
    -- Address bus connections
    addressBus     <= std_logic_vector(aluDataOut);
    dataMemAddr    <= addressBus(dataMemAddr'left downto 2); -- Note: Memory is 32-bit aligned
-
+	ioPortAddr     <= addressBus(2 downto 0);
    -- DataOut bus connections
    dataOutBus     <= regCDataOut;
    dataMemDataIn  <= dataOutBus;
-   
+   ioPortDataIn   <= dataOutBus(15 downto 0);
    -- DataIn bus connections
 	-- ADDED MUX
    dataInBus      <= dataMemDataOut when addressBus(15) = '0' else
 							ioPortDataOut  when addressBus(15) = '1';
    -- Memory Selection
-   dataMemWrite   <= writeEn;
-
-   --=============================================================
+	-- ADDED ioPortWrite AND CHECK IF ADDRESSBUS 15
+   dataMemWrite   <= writeEn and not addressBus(15);
+	ioPortWrite    <= writeEn and     addressBus(15);
+	-- ADDED IOPort
+	-- IO Port instantiation
+	theIOPort:
+	entity work.IOPort
+		port map (
+			reset   => reset,			--
+         clock   => clock,			--
+         writeEn => ioPortWrite,
+         addr    => ioPortAddr,
+         dataIn  => ioPortDataIn,
+         dataOut => ioPortDataOut,
+         pinIn   => pinIn,
+         pinOut  => pinOut,
+         pinDrv  => pinDrv
+		);
    -- Data Memory instantiation
    -- Word access (A1..0 not used)
    dataMem:
