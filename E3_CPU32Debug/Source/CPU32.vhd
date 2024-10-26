@@ -97,8 +97,6 @@ begin
    pcOut <= pc(pcOut'range); -- to stop design being optimized away!
 
    -- For later expansion
-   pinOut <= (others => '0');
-   pinDrv <= (others => '0');
    
    --==============================================
    -- PC source data path
