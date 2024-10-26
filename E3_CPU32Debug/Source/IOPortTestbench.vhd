@@ -195,25 +195,32 @@ BEGIN
       busWrite( PDORAddress, x"0000" ); -- value to output
       busWrite( PDDRAddress, x"FFFF" ); -- set as all output
       checkValue("IOValue", portIO, x"0000");
-
-      -- Your code for other tests
-      -- test set
-      busWrite( PDORAddress, x"AAAA" );
+      
+      -- **********************************************************
+      -- Test: PSOR (Set)
       busWrite( PSORAddress, x"FF00" );
       busRead(PDORAddress, tempData);
-      checkValue("PDOR Value", tempData, x"FFAA");
-      -- test clear
-      busWrite( PDORAddress, x"AAAA" );
-      busWrite( PCORAddress, x"FF00" );
+      checkValue("PDOR Value", tempData, x"FF00");
+
+      -- **********************************************************
+      -- Test: PCOR (Clear)
+      busWrite( PCORAddress, x"FFF0" );
       busRead(PDORAddress, tempData);
-      checkValue("PDOR Value", tempData, x"00AA");
-      -- test toggle
-      busWrite( PDORAddress, x"AAAA" );
-      busWrite( PTORAddress, x"FF00" );
+      checkValue("PDOR Value", tempData, x"0000");
+
+      -- **********************************************************
+      -- Test: PTOR (Toggle)
+      busWrite( PTORAddress, x"00FF" );
       busRead(PDORAddress, tempData);
-      checkValue("PDOR Value", tempData, x"55AA");
+      checkValue("PDOR Value", tempData, x"00FF");
+
+      -- **********************************************************  
+      -- Test: PDIR (Input)
+      busWrite( PDDRAddress, x"0FF0" );
+      busRead(PDIRAddress, tempData);
+      checkValue("PDIR Value", tempData, x"00FF");
       
-      wait for 4*clockPeriod;
+      --wait for 4*clockPeriod;
 
       simComplete <= true;
 

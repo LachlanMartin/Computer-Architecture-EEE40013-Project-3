@@ -96,8 +96,6 @@ begin
    
    pcOut <= pc(pcOut'range); -- to stop design being optimized away!
 
-   -- For later expansion
-   
    --==============================================
    -- PC source data path
    --
