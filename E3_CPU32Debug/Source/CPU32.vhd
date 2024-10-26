@@ -257,7 +257,7 @@ begin
    -- Address bus connections
    addressBus     <= std_logic_vector(aluDataOut);
    dataMemAddr    <= addressBus(dataMemAddr'left downto 2); -- Note: Memory is 32-bit aligned
-	ioPortAddr     <= addressBus(2 downto 0);
+	ioPortAddr     <= addressBus(4 downto 2);
    -- DataOut bus connections
    dataOutBus     <= regCDataOut;
    dataMemDataIn  <= dataOutBus;
